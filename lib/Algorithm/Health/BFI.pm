@@ -11,22 +11,22 @@ Algorithm::Health::BFI - Interface to Body Fat Index.
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 DESCRIPTION
 
-A person's body fat percentage is the total weight of the person's fat divided by the person's 
-weight and consists of essential body fat and storage body fat.Essential body fat is necessary
+A person's body fat  percentage  is the total mass of the person's fat divided by the person's 
+mass  and  consists of essential body fat and storage body fat.Essential body fat is necessary
 to maintain life and reproductive functions. Storage body  fat consists of fat accumulation in 
 adipose tissue, part of which protects internal organs in the chest and abdomen.
 
 Some regard the body fat percentage as the better measure of an individual's fitness level, as
 it  is  the  only  body measurement which directly calculates the particular individual's body 
-composition without regard to the individual's height or weight.
+composition without regard to the individual's height or mass.
 
 =head1 CONSTRUCTOR
 
@@ -35,14 +35,14 @@ It expects optionally reference to an anonymous hash with the following keys:
     +-------------+----------+---------+
     | Key         | Value    | Default |
     +-------------+----------+---------+
-    | weight_unit | kg/lb/st | lb      |
+    | mass_unit   | kg/lb/st | lb      |
     | length_unit | m /in/ft | in      |
     +-------------+----------+---------+
 
     use strict; use warnings;
     use Algorithm::Health::BFI;
 
-    my $bfi_1 = Algorithm::Health::BFI->new({ weight_unit => 'st', length_unit => 'ft' });
+    my $bfi_1 = Algorithm::Health::BFI->new({ mass_unit => 'st', length_unit => 'ft' });
 
     # or simply
 
@@ -56,7 +56,7 @@ sub new
     my $param = shift;
 
     _validate_param($param);
-    $param->{weight_unit} = 'lb' unless defined($param->{weight_unit});
+    $param->{mass_unit}   = 'lb' unless defined($param->{mass_unit});
     $param->{length_unit} = 'in' unless defined($param->{length_unit});
 
     bless $param, $class;
@@ -65,16 +65,28 @@ sub new
 
 =head1 METHODS
 
-=head2 get_bfi(mass, height)
+=head2 get_bfi()
 
-Return Body Fat Index for the given input.
+Return Body Fat Index for the given input. Parameters should be passed in as reference to hash
+with the following key,value pairs:
 
+    +---------+-------------------------------------------+
+    | Key     | Value                                     |      
+    +---------+-------------------------------------------+
+    | sex     | m | f                                     |
+    | mass    | mass (kg | lb | st)                       |
+    | waist   | measurement (m | in | ft)                 |
+    | wrist   | measurement (m | in | ft) ONLY for female |
+    | hips    | measurement (m | in | ft) ONLY for female |
+    | forearm | measurement (m | in | ft) ONLY for female |
+    +---------+-------------------------------------------+
+    
     use strict; use warnings;
     use Algorithm::Health::BFI;
 
     my $bfi = Algorithm::Health::BFI->new();
-    print $bfi->get_bfi({sex => 'f', weight => 60, waist => 38, wrist => 3, hips => 30, forearm => 3}) . "\n";
-    print $bfi->get_bfi({sex => 'm', weight => 60, waist => 40}) . "\n";
+    print $bfi->get_bfi({sex => 'f', mass => 60, waist => 38, wrist => 3, hips => 30, forearm => 3}) . "\n";
+    print $bfi->get_bfi({sex => 'm', mass => 60, waist => 40}) . "\n";
 
 =cut
 
@@ -83,17 +95,18 @@ sub get_bfi
     my $self  = shift;
     my $param = shift;
 
-    my ($weight, $waist, $wrist, $hips, $forearm);
-    my ($lean_body_weight, $body_fat_weight, $bfi);
+    my ($mass, $waist, $wrist, $hips, $forearm);
+    my ($lean_body_mass, $body_fat_mass, $bfi);
     my ($factor_1, $factor_2, $factor_3, $factor_4, $factor_5);
     
-    $weight = $self->_get_weight($param->{weight}, 'lb');
-    $waist  = $self->_get_length($param->{waist},  'in');
+    _validate_input($param);
+    $mass  = $self->_get_mass($param->{mass}, 'lb');
+    $waist = $self->_get_length($param->{waist},  'in');
     if ($param->{sex} =~ /^m$/i)
     {
-        $factor_1 = ($weight * 1.082) + 94.42;
+        $factor_1 = ($mass * 1.082) + 94.42;
         $factor_2 = $waist * 4.15;
-        $lean_body_weight = $factor_1 - $factor_2;
+        $lean_body_mass = $factor_1 - $factor_2;
     }
     elsif ($param->{sex} =~ /^f$/i)
     {
@@ -101,19 +114,19 @@ sub get_bfi
         $hips    = $self->_get_length($param->{hips},    'in');
         $forearm = $self->_get_length($param->{forearm}, 'in');
 
-        $factor_1 = ($weight * 0.732) + 8.987;
+        $factor_1 = ($mass * 0.732) + 8.987;
         $factor_2 = $wrist   / 3.140;
         $factor_3 = $waist   * 0.157;
         $factor_4 = $hips    * 0.249;
         $factor_5 = $forearm * 0.434;
-        $lean_body_weight = $factor_1 + $factor_2 - $factor_3 - $factor_4 + $factor_5;
+        $lean_body_mass = $factor_1 + $factor_2 - $factor_3 - $factor_4 + $factor_5;
     }
     else
     {
-        croak("ERROR: Invalid value for key 'sex'.\n");
+        croak("ERROR: Invalid value for key sex.\n");
     }
-    $body_fat_weight = $weight - $lean_body_weight;
-    $self->{bfi} = sprintf("%.2f", (($body_fat_weight * 100) / $weight));
+    $body_fat_mass = $mass - $lean_body_mass;
+    $self->{bfi} = sprintf("%.2f", (($body_fat_mass * 100) / $mass));
     $self->{sex} = $param->{sex};
 
     return $self->{bfi};
@@ -140,7 +153,7 @@ body fat percentages.The table below describes different percentages but isn't r
     use Algorithm::Health::BFI;
 
     my $bfi = Algorithm::Health::BFI->new();
-    print $bfi->get_bfi({sex => 'm', weight => 60, waist => 40}) . "\n";
+    print $bfi->get_bfi({sex => 'm', mass => 60, waist => 40}) . "\n";
     print $bfi->get_category() . "\n";
 
 =cut
@@ -199,27 +212,27 @@ sub get_category
     }
 }
 
-sub _get_weight
+sub _get_mass
 {
-    my $self   = shift;
-    my $weight = shift;
-    my $unit   = shift;
+    my $self = shift;
+    my $mass = shift;
+    my $unit = shift;
 
-    return $weight if (uc($unit) eq uc($self->{weight_unit}));
+    return $mass if (uc($unit) eq uc($self->{mass_unit}));
 
-    if ($self->{weight_unit} =~ /st/i)
+    if ($self->{mass_unit} =~ /st/i)
     {
         # 1 st = 14 lb
-        return $weight*14 if ($unit =~ /lb/i);
+        return $mass*14 if ($unit =~ /lb/i);
     }
-    elsif ($self->{weight_unit} =~ /kg/i)
+    elsif ($self->{mass_unit} =~ /kg/i)
     {
         # 1 kg = 2.20462262 lb
-        return $weight*2.20462262 if ($unit =~ /lb/i);
+        return $mass*2.20462262 if ($unit =~ /lb/i);
     }
     else
     {
-        croak("ERROR: Invalid unit for weight.\n");
+        croak("ERROR: Invalid unit for mass.\n");
     }
 }
 
@@ -246,7 +259,32 @@ sub _get_length
         croak("ERROR: Invalid unit for length.\n");
     }
 }
-
+    
+sub _validate_input
+{
+    my $input = shift;
+    croak("ERROR: Missing input parameters.\n") 
+        unless defined $input;
+    croak("ERROR: Input param has to be a ref to HASH.\n")
+        if (ref($input) ne 'HASH');
+    croak("ERROR: Missing key sex.\n")
+        unless exists($input->{sex});
+    croak("ERROR: Missing key mass.\n")
+        unless exists($input->{mass});
+    croak("ERROR: Missing key waist.\n")
+        unless exists($input->{waist});
+    croak("ERROR: Invalid number of keys found in the input hash.\n")
+        if (($input->{sex} =~ /^m$/i) && (scalar(keys %{$input}) != 3));
+    croak("ERROR: Missing key wrist.\n")
+        if (($input->{sex} =~ /^f$/i) && !exists($input->{wrist}));
+    croak("ERROR: Missing key hips.\n")
+        if (($input->{sex} =~ /^f$/i) && !exists($input->{hips}));
+    croak("ERROR: Missing key forearm.\n")
+        if (($input->{sex} =~ /^f$/i) && !exists($input->{forearm}));
+    croak("ERROR: Invalid number of keys found in the input hash.\n")
+        if (($input->{sex} =~ /^f$/i) && (scalar(keys %{$input}) != 6));
+}
+    
 sub _validate_param
 {
     my $param = shift;

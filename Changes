@@ -1,4 +1,11 @@
 Revision history for Algorithm-Health-BFI
 
+0.02    Wed Apr 27 13:47:15 2011
+        - Renamed key 'weight' to 'mass'.
+        - Renamed method _get_weight() to _get_mass().
+        - Added method _validate_input().
+        - Added unit test for input validation.
+        - Fixed the typo in the pod for method get_bfi().
+
 0.01    Tue Apr 26 19:12:11 2011
-        First version, released.
+        - First version, released.
